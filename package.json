@@ -1,0 +1,23 @@
+{
+  "name": "modal",
+  "version": "0.0.0",
+  "description": "best modal around",
+  "main": "modal.global.js",
+  "scripts": {
+    "install": "typings install",
+    "tsc": "tsc",
+    "sass": "sass source/style.scss source/style.css",
+    "bundle": "node node_modules/requirejs/bin/r.js -o name=node_modules/almond/almond include=modal.global out=modal.bundle.js wrap=true",
+    "build": "((npm run tsc --silent && npm run bundle --silent) & npm run sass --silent) && echo Build complete.",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Chase Moskal",
+  "license": "MIT",
+  "devDependencies": {
+    "almond": "^0.3.2",
+    "node-sass": "^3.6.0",
+    "requirejs": "^2.2.0",
+    "typescript": "^1.8.10",
+    "typings": "^0.8.1"
+  }
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Modal Testing Ground</title>
+        <link rel="stylesheet" href="source/style.css"/>
+        <script>
+
+            function loadScript(path) {
+                document.write("<scr" + "ipt src=\"" + path + "\"></scr" + "ipt>");
+            }
+
+            // Debug mode: Load via RequireJS (sourcemaps!).
+            if (/^\??debug/i.test(location.search)) {
+                loadScript("node_modules/requirejs/require.js");
+                loadScript("modal.global.js");
+            }
+
+            // Production mode: Almond bundle.
+            else {
+                loadScript("modal.bundle.js");
+            }
+
+        </script>
+        <script>
+            onModalReady(function() {
+                document.querySelector("[data-modaltest-basic]").onclick = function() {
+                    new Modal({innerHTML: "This is a test Modal."});
+                };
+                document.querySelector("[data-modaltest-image]").onclick = function() {
+                    new ModalImage({src: "photos/bee.large.jpg"});
+                };
+            });
+
+        </script>
+    </head>
+    <body>
+        <h1>Modal testing ground.</h1>
+        <button data-modaltest-basic>Basic</button>
+        <button data-modaltest-image>Image</button>
+    </body>
+</html>
