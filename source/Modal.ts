@@ -9,11 +9,40 @@ import makeElement from "./dom/makeElement";
 import isNested from "./dom/isNested";
 
 /**
+ * Options for creating a new modal popup.
+ */
+export interface ModalOptions {
+
+    /** Text that is put into the modal content box ('textContent' is assigned, also 'innerText' for legacy). */
+    textContent?: string;
+
+    /** HTML that is put into the modal content box ('innerHTML' is assigned) */
+    innerHTML?: string;
+    
+    /** Establish behavior that closes the modal when the cover is clicked. */
+    closeOnCoverClick?: boolean;
+
+    /** Duration of appear/disappear animations in milliseconds. If set to 0, animations are disabled. */
+    animationTime?: number;
+}
+
+/**
  * Generic modal popup – focus the user's attention.
  *  - The user cannot proceed until they satisfy the modal.
- *  - You may want to extend this class to create interesting modals, this one is rather minimalistic.
+ *  - You may want to extend this class to create interesting modals. This one is rather minimalistic.
  */
 export default class Modal {
+
+    /**
+     * The modal region contains every modal on the web page.
+     * There may be many modals on a page, but there should only be one ModalRegion.
+     * The first modal region places itself onto the global window object.
+     */
+    region: ModalRegion =
+        // Use the globally defined 'modalRegion' object,
+        (<WindowOverride>window).modalRegion
+        // Or be the first to define it.
+        || ((<WindowOverride>window).modalRegion = new ModalRegion());
 
     /**
      * Fixed background that covers everything behind it.
@@ -24,7 +53,11 @@ export default class Modal {
      *  - The fullscreen fixed background which covers everything behind the modal.
      *  - The root element of the individual modal.
      */
-    cover: ModalHtmlElement = makeElement<ModalHtmlElement>("div", {"class": "modal-cover"}, e => e.modal = this);
+    cover: ModalHtmlElement = makeElement<ModalHtmlElement>(
+      "div",
+      {"class": "modal-cover"},
+      e => e.modal = this
+    );
 
     /**
      * Centered content box.
@@ -33,51 +66,44 @@ export default class Modal {
      */
     content: HTMLElement = this.createContent();
 
-    /**
-     * The modal region contains every modal on the web page.
-     * There may be many modals on a page, but there should only be one ModalRegion.
-     */
-    region: ModalRegion = (<WindowOverride>window).modalRegion || new ModalRegion(); // Use existing region, or create the region (adds itself to the window object).
-
-    /** HTML string that fills the modal content box. */
-    protected innerHTML: string;
-
-    /** Perform fade-in and fade-out animations. */
-    protected fade: boolean;
-
-    /** Duration, in milliseconds, of the fade-in and fade-out animations. */
-    protected fadeTime: number;
+    /** Duration of the appear/disappear animations in milliseconds. If set to 0, animations are disabled. */
+    protected animationTime: number;
 
     /**
      * Create a Modal popup.
      */
     constructor(options: ModalOptions = {}) {
-        const clickCloseCover = (options.clickCloseCover !== undefined)
-          ? options.clickCloseCover
-          : true;
+        // Sensible errors.
+        if (options.innerHTML !== undefined && options.textContent !== undefined)
+            throw "Doesn't make sense to provide innerHTML and textContent at the same time – they override each other";
 
-        this.fade = ('fade' in options)
-          ? options.fade
-          : true;
-
-        this.fadeTime = ('fadeTime' in options)
-          ? options.fadeTime
-          : 250;
+        // textContent option is directly assigned onto the content element.
+        if (options.textContent !== undefined) {
+            this.content.innerText = options.textContent; // 'innerText' for legacy browsers.
+            this.content.textContent = options.textContent;
+        }
 
         // innerHTML option is assigned directly onto the content element.
-        this.innerHTML = this.content.innerHTML = options.innerHTML;
+        if (options.innerHTML) {
+            this.content.innerHTML = options.innerHTML;
+        }
 
         // Place the content element within the cover element.
         this.cover.appendChild(this.content);
 
         // Establish behavior to close this modal when the cover is clicked.
-        if (clickCloseCover) {
+        if ((options.closeOnCoverClick !== undefined) ? options.closeOnCoverClick : true) {
             this.cover.onclick = event => {
                 if (event.target === this.content || isNested(<Node>event.target, this.content))
                     return;
                 this.close();
             };
         }
+
+        // Defaulted property representing fade duration.
+        this.animationTime = ("fadeTime" in options)
+          ? options.animationTime
+          : 250;
 
         // Modal appears upon creation.
         this.appear();
@@ -98,18 +124,18 @@ export default class Modal {
      *  - If the `fade` option is true, a fade-in animation will be played.
      *  - Otherwise, no animation will occur (the modal will appear instantly).
      */
-    protected appear(): Promise<any> {
-        if (this.fade) {
+    protected appear(): Promise<void> {
+        if (this.animationTime > 0) {
             this.cover.style.opacity = "0";
-            this.cover.style.transition = `opacity ${this.fadeTime}ms ease`;
-            return new Promise((resolve, reject)=>{
+            this.cover.style.transition = `opacity ${this.animationTime}ms ease`;
+            return new Promise<void>((resolve, reject)=>{
                 setTimeout(()=>{
                     this.cover.style.opacity = "1";
                     resolve();
                 }, 0);
             });
         } else {
-            return Promise.resolve();
+            return Promise.resolve<void>();
         }
     }
 
@@ -118,43 +144,26 @@ export default class Modal {
      *  - If the `fade` option is true, a fade-out animation will be played.
      *  - Otherwise, no animation will occur (the modal will disappear instantly).
      */
-    protected disappear(): Promise<any> {
-        if (this.fade) {
+    protected disappear(): Promise<void> {
+        if (this.animationTime > 0) {
             this.cover.style.opacity = "0";
-            return new Promise((resolve, reject)=>{
+            return new Promise<void>((resolve, reject)=>{
                 setTimeout(()=>{
                     resolve();
-                }, this.fadeTime);
+                }, this.animationTime);
             });
         } else {
-            return Promise.resolve();
+            return Promise.resolve<void>();
         }
     }
 
     /**
-     * Close this modal.
+     * Close this modal by playing the disappear animation then removing the modal.
+     * The modal region doesn't need to be notified, because it uses the DOM as its source of truth.
      */
-    close(): Promise<any> {
+    close(): Promise<void> {
         return this.disappear().then(() => this.cover.remove());
     }
-}
-
-/**
- * Options for creating a new modal popup.
- */
-export interface ModalOptions {
-
-    /** HTML string that fills the modal content box. */
-    innerHTML?: string;
-
-    /** Perform fade-in and fade-out animations. */
-    fade?: boolean;
-
-    /** Fade animation duration in milliseconds. */
-    fadeTime?: number;
-
-    /** Close the modal whenever the modal cover is clicked. */
-    clickCloseCover?: boolean;
 }
 
 /**

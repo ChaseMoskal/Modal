@@ -8,7 +8,7 @@ import Modal, {ModalHtmlElement} from "./Modal";
 export default class ModalRegion {
 
     /** Modal region HTML element. */
-    element = makeElement<HTMLDivElement>(
+    element: HTMLDivElement = makeElement<HTMLDivElement>(
       "div",
       {"data-modal-region": ""},
       e => document.body.insertBefore(e, document.body.firstChild)
@@ -18,14 +18,6 @@ export default class ModalRegion {
     get modals(): Modal[] {
         return [].slice.call(this.element.children)
           .map((child: ModalHtmlElement) => child.modal);
-    }
-
-    /**
-     * Create a modal region and attach it to the global window object.
-     */
-    constructor() {
-        // Attaching this region to the global window object.
-        (<WindowOverride>window).modalRegion = this;
     }
 }
 
